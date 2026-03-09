@@ -11,8 +11,8 @@ public class SynthStep01 {
 
 
 
-        Oscillator osc = new Oscillator(44100, 440.0, 0.5);
-        Oscillator osc2 = new Oscillator(44100, 660.0, 0.5);
+        Oscillator osc = new Oscillator(44100, 440.0, 0.5, Waveform.SINE);
+        Oscillator osc2 = new Oscillator(44100, 660.0, 0.5, Waveform.SINE);
 
         double[] samples = osc.generateSamples(totalSamples);
 
