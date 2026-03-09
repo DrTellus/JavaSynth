@@ -5,7 +5,6 @@ public class SynthStep01 {
     static void main(String[] args) throws LineUnavailableException {
 
         double durationSeconds = 1.5;
-
         int sampleRate = 44100;
         int totalSamples = (int) (sampleRate * durationSeconds);//caster matte til int.
         //primitiv datatype byte har 8 bits.Kan lagre nr fra -128 til 127
