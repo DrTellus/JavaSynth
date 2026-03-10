@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.plaf.TableHeaderUI;
 import java.awt.event.*;
 
 
@@ -6,7 +7,7 @@ public class SynthKeyboard implements KeyListener {
 
     private int sampleRate = 44100;
     private double duration = 0.3;
-    private boolean playing = false;
+    private volatile boolean playing = false;
     //lager en audioplayer som brukes når taster trykkes
     private AudioPlayer player = new AudioPlayer();
     private JLabel label = new JLabel("Trykk en tast for god´s sake!");
@@ -22,18 +23,26 @@ public class SynthKeyboard implements KeyListener {
         if (tone == 0.0) {
             return;
         }
+        if (playing) {return;}
+
+        playing = true;
+        player.start();
 
         Oscillator osc3 = new Oscillator(44100, tone, 0.5, Waveform.SAW);
-        int totalSamples = (int) (sampleRate * duration);
-        double[] samples = osc3.generateSamples(totalSamples);
-        //player.play(samples);
-        //Slipper å vente på ny tone.- polyfonisk
-        new Thread(() -> player.play(samples)).start();
+        new Thread(()-> {
+            while (playing){
+                double[] samples = osc3.generateSamples(1024);
+                player.write(samples);
+            }
+            player.stop();
+        }).start();
+
         label.setText("" + tone + "    "+ Character.toUpperCase(tast) );
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
+    playing = false;
     }
 
     @Override

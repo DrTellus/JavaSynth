@@ -1,27 +1,31 @@
+
+
 import javax.sound.sampled.*;
 
 public class AudioPlayer {
 
     private int sampleRate = 44100;
+    private SourceDataLine line;
 
-    public void play(double[] samples) {
-        //lager et byte-array for å konvertere samplesene til bytes for lydkortet
-        byte[] buffer = convertToBytes(samples);
-
-        //Konvertering til lyd, etc
+    public void start() {
         try {
             AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-            SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
-
-            line.open(format);
+            line = (SourceDataLine) AudioSystem.getLine(info);
+            line.open(format, 4096);
             line.start();
-            line.write(buffer, 0, buffer.length);
-            line.drain();
-            line.close();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+    public void write(double[] samples) {
+        //lager et byte-array for å konvertere samplesene til bytes for lydkortet
+        byte[] buffer = convertToBytes(samples);
+        line.write(buffer, 0, buffer.length);
+    }
+    public void stop() {
+        line.flush();
+        line.close();
     }
 
     //Metode for å konvertere fra desimaltall(osc bruker desimal) til heltall til bytes (i hexa)
@@ -41,7 +45,7 @@ public class AudioPlayer {
 
         }
         return buffer;
-    }
-}
+    }}
+
 
 
