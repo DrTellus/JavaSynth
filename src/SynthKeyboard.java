@@ -1,48 +1,74 @@
 import javax.swing.*;
 import javax.swing.plaf.TableHeaderUI;
 import java.awt.event.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class SynthKeyboard implements KeyListener {
 
     private int sampleRate = 44100;
     private double duration = 0.3;
-    private volatile boolean playing = false;
+    //private volatile boolean playing = false;
+    private ConcurrentHashMap<Character, Oscillator> activeOscillators = new ConcurrentHashMap<>();
     //lager en audioplayer som brukes når taster trykkes
     private AudioPlayer player = new AudioPlayer();
     private JLabel label = new JLabel("Trykk en tast for god´s sake!");
+    private double releaseTime = 0.3;
 
     @Override
     public void keyPressed(KeyEvent e) {
-        System.out.println("Trykket: " + e.getKeyChar());
+
+        //Legger til releasekontroll
+
         //hnter tast trykket og lagrer som tast
         char tast = e.getKeyChar();
         //henter den korresponderende desimalverdien fra getfrq-metode og lagrer som tone
         double tone = getFrequency(tast);
 
-        if (tone == 0.0) {
+        if (tast == '1'){
+            releaseTime = Math.max(0.01, releaseTime-0.1);
+            label.setText("Release: " + releaseTime);
             return;
         }
-        if (playing) {return;}
+        if (tast == '2'){
+            releaseTime = Math.min(2.0, releaseTime+0.1);
+            label.setText("Release; " + releaseTime);
+            return;
+        }
 
-        playing = true;
-        player.start();
+        if (tone == 0.0) {
 
-        Oscillator osc3 = new Oscillator(44100, tone, 0.5, Waveform.SAW);
-        new Thread(()-> {
-            while (playing){
-                double[] samples = osc3.generateSamples(1024);
-                player.write(samples);
-            }
-            player.stop();
-        }).start();
+            return;
+        }
+        if (activeOscillators.containsKey(tast)){
+            return;
+        }
+        System.out.println("Trykket: " + e.getKeyChar());
+       activeOscillators.put(tast, new Oscillator(44100, tone, 0.12, Waveform.SAW));
+        label.setText("" + tone + "   " + Character.toUpperCase(tast));
 
-        label.setText("" + tone + "    "+ Character.toUpperCase(tast) );
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-    playing = false;
+      char tast = e.getKeyChar();
+      Oscillator osc = activeOscillators.get(tast);
+      if (osc == null){return;}
+
+      //gir releasetid
+      new Thread(() -> {
+          int steps = 50;
+          double startVolume = 0.12;
+          double sleepTime = releaseTime/steps*1000;
+          for(int i = steps; i >= 0; i--){
+              osc.setVolume(startVolume * i / steps);
+              try {
+                  Thread.sleep((long) sleepTime); }catch (Exception ex){}
+              }
+          activeOscillators.remove(tast);
+          }).start();
+
+    //activeOscillators.remove(e.getKeyChar());
     }
 
     @Override
@@ -57,6 +83,22 @@ public class SynthKeyboard implements KeyListener {
         //gir framen muligheten til å overvåke tastaturet i (dette) vinduet
         frame.addKeyListener(this);
         frame.add(label);
+        player.start();
+        new Thread(() -> {
+            while (true) {
+                double[] mix =new double[1024];
+                for (Oscillator osc :activeOscillators.values()){
+                    double[] samples = osc.generateSamples(1024);
+                    for (int i = 0; i < mix.length; i++) {
+                        mix[i] += samples[i];
+                    }
+                }
+                int count = activeOscillators.size();
+
+                    player.write(mix);
+            }
+        }).start();
+
         //gjør framen synlig
         frame.setVisible(true);
     }

@@ -40,4 +40,9 @@ public class Oscillator {
         return samples;
     }
 
+    //releasemetode
+    public void setVolume (double volume){
+        this.volume = volume;
+    }
+
 }
